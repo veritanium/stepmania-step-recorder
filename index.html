@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="https://cdn.tailwindcss.com"></script>
+    </head>
+    <body class="bg-gray-600">
+        <div class="mx-96" id="main-div">
+            <div id="header" class="flex justify-center h-32">
+                <h1 class="">Step Recorder</h1>
+            </div>
+            <div id="content" class="flex justify-center">
+                <div class="flex-col space-y-2">
+                    <div>
+                        <label for="beats_per_min">BPM</label>
+                        <input id="beats_per_min" name="beats_per_min" type="number">
+                    </div>
+                    <hr />
+                    <div class="flex-col">
+                        <label for="key_input_type">Key Input</label>
+                        <div class="flex">
+                            <input id="numpad" name="key_input_type" value="numpad" type="radio" checked="checked">
+                            <label for="numpad" class="ml-4">Numpad</label>
+                        </div>
+                        <div class="flex">
+                            <input id="arrow_keys" name="key_input_type" value="arrows" type="radio">
+                            <label for="arrow_keys" class="ml-4">Arrow Keys</label>
+                        </div>
+                        <div class="flex">
+                            <input id="dancepad" name="key_input_type" value="dancepad" type="radio">
+                            <label for="dancepad" class="ml-4">Dance Pad</label>
+                        </div>
+                    </div>
+                    <hr />
+                    <div class="flex">
+                        <button type="button" id="start_btn" class="bg-green-600 px-8 py-1 rounded-md">Start</button>
+                        <button type="button" id="stop_btn" class="bg-stop-600 px-8 py-1 rounded-md hidden">Stop</button>
+                    </div>
+                    <div class="flex">
+                        <span id="start_message" class="bg-red-400 p-2 rounded-md hidden"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            // ================== Helper methods
+            function getEl(id) {
+                return document.getElementById(id)
+            }
+
+            function getBeatsPerMin() {
+                return getEl('beats_per_min').value;
+            }
+
+            function enableKeyBoardEvents() {
+                document.addEventListener('keydown', handleKeyDown);
+            }
+
+            function disableKeyBoardEvents() {
+                document.removeEventListener('keydown', handleKeyDown);
+            }
+
+            function canGame() {
+                return "getGamepads" in navigator;
+            }
+
+            function canStart() {
+                // check if beats per minute is set
+                return !!getBeatsPerMin();
+            }
+
+            function showError(message) {
+                let startMessage = getEl('start_message');
+                startMessage.textContent = message;
+                startMessage.classList.remove('hidden');
+            }
+
+            function hideError() {
+                let startMessage = getEl('start_message');
+                startMessage.classList.add('hidden');
+            }
+
+            // ================== Game pad handling
+            // https://developer.mozilla.org/en-US/docs/Web/API/Gamepad_API/Using_the_Gamepad_API
+            function handleGamePadEvent(event) {
+                console.log("Gamepad connected at index %d: %s. %d buttons, %d axes.",
+                    event.gamepad.index, event.gamepad.id,
+                    event.gamepad.buttons.length, event.gamepad.axes.length);
+            };
+
+            // Event listeners
+            getEl('start_btn').addEventListener('click', runStart);
+
+            window.addEventListener('gamepadconnected', handleGamePadEvent);
+
+            // ================== Init vars
+            let beats_per_min = 0;
+            let keyCodes = {
+                arrowUp: 'Numpad8',
+                arrowDown: 'Numpad2',
+                arrowLeft: 'Numpad4',
+                arrowRight: 'Numpad6',
+            } 
+
+            // ================== Main methods
+            function runStart() {
+                hideError();
+
+                if (!canStart()) {
+                    showError('Beats per minute must be set');
+                    return;
+                }
+
+                // get beats per min
+                beats_per_min = getBeatsPerMin();
+
+                // get input type
+
+                console.log('can game', canGame());
+
+                enableKeyBoardEvents();
+
+                // start recording
+            }
+
+            function handleKeyDown(event) {
+                console.log("keyValue: " + event.key);
+                console.log("codeValue: " + event.code);
+
+                if (event.code === 'Escape') {
+                    disableKeyBoardEvents();
+                }
+            }
+
+        </script>
+    </body>
+</html>
