@@ -57,10 +57,12 @@
 
             function enableKeyBoardEvents() {
                 document.addEventListener('keydown', handleKeyDown);
+                document.addEventListener('keyup', handleKeyUp);
             }
 
             function disableKeyBoardEvents() {
                 document.removeEventListener('keydown', handleKeyDown);
+                document.removeEventListener('keyup', handleKeyUp);
             }
 
             function canGame() {
@@ -109,13 +111,12 @@
                 return false;
             }
 
-            // notes must be decimal representation of 4-bit binary values
-            function mergeNotes(note1, note2) {
-                return (note1 + note2).toString(2)
+            function mergeSteps(step1, step2) {
+                return (parseInt(step1, 2) + parseInt(step2, 2)).toString(2);
             }
 
-            function convertNoteToStep(note) {
-                return note.toString(2);
+            function convertKeyToStep(key) {
+                return SM_KEY_NOTES[key];
             }
 
             // ================== Game pad handling
@@ -146,18 +147,22 @@
                 'Numpad6': 'r',
             };
 
-            // binary representation
             const SM_KEY_NOTES = {
-                l: 8, // '1000'
-                r: 1, // '0001'
-                u: 4, // '0100'
-                d: 2, // '0010' 
+                l: '1000',
+                r: '0001',
+                u: '0100',
+                d: '0010', 
             }
+
+            let currentKeysPressed = new Set();
 
             let currentRecordingMeasure = 1;
             let currentRecordingBeat = 1;
 
             let recording = new Set();
+            let stepRecording = {
+                '1': ['0000'],
+            };
 
             // options are 4, 8, 16
             const STANDARD_BEAT_NOTE = 16;
@@ -195,7 +200,23 @@
                 if (currentRecordingBeat % (STANDARD_BEAT_NOTE + 1) === 0) {
                     currentRecordingBeat = 1;
                     currentRecordingMeasure++;
+                    stepRecording[currentRecordingMeasure] = [];
                 }
+
+                let currentKeys = [...currentKeysPressed.values()];
+
+                // check if any keys are currently pressed
+                if (currentKeys.length) {
+                    if (currentKeys.length === 1) {
+                        stepRecording[currentRecordingMeasure].push(convertKeyToStep(currentKeys[0]));
+                    } else if (currentKeys.length === 2) {
+                        stepRecording[currentRecordingMeasure].push(mergeSteps(convertKeyToStep(currentKeys[0]), convertKeyToStep(currentKeys[1])));
+                    }
+                } else {
+                    // set a zero measure
+                    stepRecording[currentRecordingMeasure].push('0000');
+                }
+ 
             }
 
             function runStop() {
@@ -214,7 +235,15 @@
                     return;
                 }
 
+                // set keys currently held
+                currentKeysPressed.add(INPUT_KEY_CODES[event.code]);
+
+                // old method
                 recording.add(`${INPUT_KEY_CODES[event.code]}-${currentRecordingMeasure}-${currentRecordingBeat}`);
+            }
+
+            function handleKeyUp(event) {
+                currentKeysPressed.delete(INPUT_KEY_CODES[event.code]);
             }
 
             function processRecording() {
@@ -223,6 +252,7 @@
                 let recordCopy = [...recording.values()];
 
                 console.log(recordCopy);
+                console.log(stepRecording);
 
                 // while recording array still has records create the beats
                 const LOOP_LIMIT = 1000;
