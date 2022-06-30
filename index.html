@@ -14,37 +14,38 @@
                 <div class="flex-col space-y-2">
                     <div>
                         <label for="beats_per_min">BPM</label>
-                        <input id="beats_per_min" name="beats_per_min" type="number">
+                        <input id="beats_per_min" name="beats_per_min" type="number" value="120">
                     </div>
                     <hr />
                     <div class="flex-col">
-                        <label for="key_input_type">Key Input</label>
                         <div class="flex">
-                            <input id="numpad" name="key_input_type" value="numpad" type="radio" checked="checked">
-                            <label for="numpad" class="ml-4">Numpad</label>
-                        </div>
-                        <div class="flex">
-                            <input id="arrow_keys" name="key_input_type" value="arrows" type="radio">
-                            <label for="arrow_keys" class="ml-4">Arrow Keys</label>
-                        </div>
-                        <div class="flex">
-                            <input id="dancepad" name="key_input_type" value="dancepad" type="radio">
+                            <input id="dancepad" name="key_input_type" value="dancepad" type="checkbox" disabled>
                             <label for="dancepad" class="ml-4">Dance Pad</label>
                         </div>
                     </div>
                     <hr />
-                    <div class="flex">
+                    <div class="flex justify-center">
                         <button type="button" id="start_btn" class="bg-green-600 px-8 py-1 rounded-md">Start</button>
-                        <button type="button" id="stop_btn" class="bg-stop-600 px-8 py-1 rounded-md hidden">Stop</button>
+                        <button type="button" id="stop_btn" class="bg-red-600 px-8 py-1 rounded-md hidden">Stop</button>
                     </div>
-                    <div class="flex">
+                    <div class="flex justify-center">
                         <span id="start_message" class="bg-red-400 p-2 rounded-md hidden"></span>
+                    </div>
+                    <div>
+                        <button type="button" id="show_btn" class="bg-yellow-600 px-8 py-1 rounded-md">Show Recorded Steps</button>
                     </div>
                 </div>
             </div>
         </div>
 
         <script>
+            /**
+             * This is a proof-of-concept to create a step mania step recorder for song step creation
+             * It is supposed to generate the step part of an sm file as defined here:
+             * https://github.com/stepmania/stepmania/wiki/sm 
+             * 
+             */
+
             // ================== Helper methods
             function getEl(id) {
                 return document.getElementById(id)
@@ -78,8 +79,43 @@
             }
 
             function hideError() {
-                let startMessage = getEl('start_message');
-                startMessage.classList.add('hidden');
+                getEl('start_message').classList.add('hidden');
+            }
+
+            function toggleBtns() {
+                let startBtn = getEl('start_btn');
+                let stopBtn = getEl('stop_btn');
+                if (startBtn.classList.contains('hidden')) {
+                    startBtn.classList.remove('hidden');
+                    stopBtn.classList.add('hidden');
+                } else {
+                    startBtn.classList.add('hidden');
+                    stopBtn.classList.remove('hidden');
+                }
+            }
+
+            function getBeatSeconds() {
+                let bpm = getBeatsPerMin();
+
+                if (bpm) {
+                    let secondsPerBeat = 1.0 / (bpm / 60);
+                    return {
+                        quarter: secondsPerBeat,
+                        eighth: secondsPerBeat / 2,
+                        sixteenth: secondsPerBeat / 4, 
+                    }
+                }
+
+                return false;
+            }
+
+            // notes must be decimal representation of 4-bit binary values
+            function mergeNotes(note1, note2) {
+                return (note1 + note2).toString(2)
+            }
+
+            function convertNoteToStep(note) {
+                return note.toString(2);
             }
 
             // ================== Game pad handling
@@ -92,29 +128,52 @@
 
             // Event listeners
             getEl('start_btn').addEventListener('click', runStart);
+            getEl('stop_btn').addEventListener('click', runStop);
+            getEl('show_btn').addEventListener('click', processRecording);
 
             window.addEventListener('gamepadconnected', handleGamePadEvent);
 
             // ================== Init vars
-            let beats_per_min = 0;
-            let keyCodes = {
-                arrowUp: 'Numpad8',
-                arrowDown: 'Numpad2',
-                arrowLeft: 'Numpad4',
-                arrowRight: 'Numpad6',
-            } 
+            let recorder;
+            const INPUT_KEY_CODES = {
+                'ArrowUp': 'u',
+                'ArrowDown': 'd',
+                'ArrowLeft': 'l',
+                'ArrowRight': 'r',
+                'Numpad8': 'u',
+                'Numpad2': 'd',
+                'Numpad4': 'l',
+                'Numpad6': 'r',
+            };
+
+            // binary representation
+            const SM_KEY_NOTES = {
+                l: 8, // '1000'
+                r: 1, // '0001'
+                u: 4, // '0100'
+                d: 2, // '0010' 
+            }
+
+            let currentRecordingMeasure = 1;
+            let currentRecordingBeat = 1;
+
+            let recording = new Set();
+
+            // options are 4, 8, 16
+            const STANDARD_BEAT_NOTE = 16;
 
             // ================== Main methods
             function runStart() {
                 hideError();
-
+                
                 if (!canStart()) {
                     showError('Beats per minute must be set');
                     return;
                 }
-
+                toggleBtns();
+                
                 // get beats per min
-                beats_per_min = getBeatsPerMin();
+                beatDurations = getBeatSeconds();
 
                 // get input type
 
@@ -123,15 +182,116 @@
                 enableKeyBoardEvents();
 
                 // start recording
+                startRecorder(beatDurations);
             }
 
-            function handleKeyDown(event) {
-                console.log("keyValue: " + event.key);
-                console.log("codeValue: " + event.code);
+            function startRecorder({ quarter, eighth, sixteenth }) {
+                // assume 4 beats per measure and sample at the sixteenth note level
+                recorder = setInterval(handleStepInterval, sixteenth * 1000);
+            }
 
-                if (event.code === 'Escape') {
-                    disableKeyBoardEvents();
+            function handleStepInterval() {
+                currentRecordingBeat++;
+                if (currentRecordingBeat % (STANDARD_BEAT_NOTE + 1) === 0) {
+                    currentRecordingBeat = 1;
+                    currentRecordingMeasure++;
                 }
+            }
+
+            function runStop() {
+                stopRecorder();
+                disableKeyBoardEvents();
+                toggleBtns();
+            }
+
+            function stopRecorder() {
+                clearInterval(recorder);
+            }
+
+            function handleKeyDown(event) {    
+                if (event.code === 'Escape') {
+                    runStop();
+                    return;
+                }
+
+                recording.add(`${INPUT_KEY_CODES[event.code]}-${currentRecordingMeasure}-${currentRecordingBeat}`);
+            }
+
+            function processRecording() {
+                // assume 4 beats per measure
+
+                let recordCopy = [...recording.values()];
+
+                console.log(recordCopy);
+
+                // while recording array still has records create the beats
+                const LOOP_LIMIT = 1000;
+                let loopCount = 0;
+                let copyMeasureCount = 1;
+                let copyBeat = 1;
+                let recordedBeats = {};
+                let currentMeasure = [];
+
+                while(recordCopy.length > 0 && loopCount < LOOP_LIMIT) {
+                    let currentStep = recordCopy[0];
+                    let nextStep = recordCopy[0];
+
+                    let [currentKey, currentMeasureCount, currentBeat] = currentStep.split('-');
+                    let [nextKey, nextMeasure, nextBeat] = nextStep.split('-');
+
+                    if (copyMeasureCount < currentMeasureCount) {
+                        if (currentMeasure.length) {
+                            currentMeasure.map(beat => {
+                                // TODO this needs to be rewritten
+                                recordedBeats += `${beat.step}\n`;
+                            });
+                        } else {
+                            recordedBeats += '0000\n0000\n0000\n0000\n,\n';
+                        }
+                        copyMeasureCount++;
+                    } else {
+                        if (nextKey) {
+                            // if next step is identical except the arrow key then make a double step
+                            if (currentKey !== nextKey && nextBeat === currentBeat) {
+                                currentMeasure.push({
+                                    step: mergeNotes(SM_KEY_NOTES[currentKey], SM_KEY_NOTES[nextKey]),
+                                    beat: currentBeat
+                                });
+                                // extra shift to take account of double step
+                                recordCopy.shift();
+                            } else  {
+                                // if next step is 4 or more beats away than make 1/4 note
+                                let duration = 4;
+                                // if next step is less than 4 but greater than 2 beats away then make 1/8 note
+                                if (nextBeat - currentBeat > 2) {
+                                    duration = 8;
+                                } else {
+                                    // if next step is less than or equal to 2 than make 1/16 note
+                                    duration = 16;
+                                }
+                                currentMeasure.push({
+                                    step: convertNoteToStep(SM_KEY_NOTES[currentKey]),
+                                    beat: currentBeat,
+                                    duration,
+                                });
+                            }
+                            
+                        } else {
+                            currentMeasure.push({
+                                step: convertNoteToStep(SM_KEY_NOTES[currentKey]),
+                                beat: currentBeat,
+                                duration: 4,
+                            });
+                        }
+                        recordCopy.shift();
+                    }
+
+
+                    loopCount++;
+                }
+                console.log(loopCount);
+
+                console.log(recordedBeats);
             }
 
         </script>
