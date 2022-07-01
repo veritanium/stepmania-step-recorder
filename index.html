@@ -147,11 +147,13 @@
                 'Numpad6': 'r',
             };
 
+            // Step Mania step arrow order
+            // L - D - U - R
             const SM_KEY_NOTES = {
                 l: '1000',
                 r: '0001',
-                u: '0100',
-                d: '0010', 
+                u: '0010',
+                d: '0100', 
             }
 
             let currentKeysPressed = new Set();
@@ -211,6 +213,9 @@
                         stepRecording[currentRecordingMeasure].push(convertKeyToStep(currentKeys[0]));
                     } else if (currentKeys.length === 2) {
                         stepRecording[currentRecordingMeasure].push(mergeSteps(convertKeyToStep(currentKeys[0]), convertKeyToStep(currentKeys[1])));
+                    } else {
+                        // assume invalid for now if more than 2 keystrokes in a single step
+                        stepRecording[currentRecordingMeasure].push('0000');    
                     }
                 } else {
                     // set a zero measure
@@ -248,11 +253,7 @@
 
             function processRecording() {
                 // assume 4 beats per measure
-
-                let recordCopy = [...recording.values()];
-
-                console.log(recordCopy);
-                console.log(stepRecording);
+                let copyRecording = Object.assign({}, stepRecording);
 
                 // while recording array still has records create the beats
                 const LOOP_LIMIT = 1000;
@@ -261,67 +262,48 @@
                 let copyBeat = 1;
                 let recordedBeats = {};
                 let currentMeasure = [];
+                let processedSteps = '';
 
-                while(recordCopy.length > 0 && loopCount < LOOP_LIMIT) {
-                    let currentStep = recordCopy[0];
-                    let nextStep = recordCopy[0];
-
-                    let [currentKey, currentMeasureCount, currentBeat] = currentStep.split('-');
-                    let [nextKey, nextMeasure, nextBeat] = nextStep.split('-');
-
-                    if (copyMeasureCount < currentMeasureCount) {
-                        if (currentMeasure.length) {
-                            currentMeasure.map(beat => {
-                                // TODO this needs to be rewritten
-                                recordedBeats += `${beat.step}\n`;
-                            });
-                        } else {
-                            recordedBeats += '0000\n0000\n0000\n0000\n,\n';
-                        }
-                        copyMeasureCount++;
-                    } else {
-                        if (nextKey) {
-                            // if next step is identical except the arrow key then make a double step
-                            if (currentKey !== nextKey && nextBeat === currentBeat) {
-                                currentMeasure.push({
-                                    step: mergeNotes(SM_KEY_NOTES[currentKey], SM_KEY_NOTES[nextKey]),
-                                    beat: currentBeat
-                                });
-                                // extra shift to take account of double step
-                                recordCopy.shift();
-                            } else  {
-                                // if next step is 4 or more beats away than make 1/4 note
-                                let duration = 4;
-                                // if next step is less than 4 but greater than 2 beats away then make 1/8 note
-                                if (nextBeat - currentBeat > 2) {
-                                    duration = 8;
-                                } else {
-                                    // if next step is less than or equal to 2 than make 1/16 note
-                                    duration = 16;
+                Object.keys(copyRecording)
+                    .map(function (measure) {
+                        if (parseInt(copyRecording[measure].join(''), 2)) {
+                            // determine smallest step duration
+                            let startCounter = false;
+                            let counter = null;
+                            let smallestStepDuration = 16;
+                            copyRecording[measure].map(function (beat) {
+                                if (parseInt(beat, 2)) {
+                                    startCounter = true;
+                                    if (counter !== null && counter < smallestStepDuration) {
+                                        smallestStepDuration = counter;
+                                    }
+                                    counter = 0;
+                                } else if (startCounter) {
+                                    counter++;
                                 }
-                                currentMeasure.push({
-                                    step: convertNoteToStep(SM_KEY_NOTES[currentKey]),
-                                    beat: currentBeat,
-                                    duration,
-                                });
-                            }
-                            
-                        } else {
-                            currentMeasure.push({
-                                step: convertNoteToStep(SM_KEY_NOTES[currentKey]),
-                                beat: currentBeat,
-                                duration: 4,
                             });
+
+                            console.log(copyRecording[measure]);
+                            console.log(smallestStepDuration);
+
+                            if (smallestStepDuration >= 4) {
+                                // quarter note measure
+                                processedSteps += `quarter,\n`;
+                            } else if (counter >= 2) {
+                                // eighth note measure
+                                processedSteps += `eighth,\n`;
+                            } else {
+                                // sixteenth note measure
+                                processedSteps += `${copyRecording[measure].join('\n')},\n`;
+                            }
+
+                        } else {
+                            // empty measure
+                            processedSteps += '0000\n0000\n0000\n0000\n,\n';
                         }
-                        recordCopy.shift();
-                    }
-
-
-                    loopCount++;
-                }
-                console.log(loopCount);
-
-                console.log(recordedBeats);
+                    });
+                
+                console.log(processedSteps);
             }
 
         </script>
