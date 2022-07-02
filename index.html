@@ -3,7 +3,8 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <script src="https://cdn.tailwindcss.com"></script>
+        <!-- <script src="https://cdn.tailwindcss.com"></script> -->
+        <script src="./tailwindcss.min.js"></script>
     </head>
     <body class="bg-gray-600">
         <div class="mx-96" id="main-div">
@@ -12,26 +13,38 @@
             </div>
             <div id="content" class="flex justify-center">
                 <div class="flex-col space-y-2">
-                    <div>
+                    <div class="flex justify-center space-x-2">
                         <label for="beats_per_min">BPM</label>
                         <input id="beats_per_min" name="beats_per_min" type="number" value="120">
                     </div>
                     <hr />
                     <div class="flex-col">
-                        <div class="flex">
+                        <div class="flex justify-center">
                             <input id="dancepad" name="key_input_type" value="dancepad" type="checkbox" disabled>
                             <label for="dancepad" class="ml-4">Dance Pad</label>
                         </div>
                     </div>
                     <hr />
                     <div class="flex justify-center">
+                        <div class="flex-col space-y-4">
+                            <div class="flex">
+                                <input type="file" id="audio_file" />
+                            </div>
+                            <div class="flex justify-center">
+                                <audio id="audio_player" controls></audio>
+                            </div>
+                        </div>
+                    </div>
+                    <hr />
+                    <div class="flex justify-around">
                         <button type="button" id="start_btn" class="bg-green-600 px-8 py-1 rounded-md">Start</button>
                         <button type="button" id="stop_btn" class="bg-red-600 px-8 py-1 rounded-md hidden">Stop</button>
+                        <button type="button" id="reset_btn" class="bg-yellow-600 px-8 py-1 rounded-md">Reset</button>
                     </div>
                     <div class="flex justify-center">
                         <span id="start_message" class="bg-red-400 p-2 rounded-md hidden"></span>
                     </div>
-                    <div>
+                    <div class="flex justify-center">
                         <button type="button" id="show_btn" class="bg-yellow-600 px-8 py-1 rounded-md">Show Recorded Steps</button>
                     </div>
                 </div>
@@ -131,10 +144,13 @@
             getEl('start_btn').addEventListener('click', runStart);
             getEl('stop_btn').addEventListener('click', runStop);
             getEl('show_btn').addEventListener('click', processRecording);
+            getEl('audio_file').addEventListener('change', processFile);
+            getEl('reset_btn').addEventListener('click', runReset);
 
             window.addEventListener('gamepadconnected', handleGamePadEvent);
 
             // ================== Init vars
+            let audioPlayer = getEl('audio_player');
             let recorder;
             const INPUT_KEY_CODES = {
                 'ArrowUp': 'u',
@@ -189,6 +205,7 @@
                 enableKeyBoardEvents();
 
                 // start recording
+                audioPlayer.play();
                 startRecorder(beatDurations);
             }
 
@@ -226,8 +243,13 @@
 
             function runStop() {
                 stopRecorder();
+                audioPlayer.pause();
                 disableKeyBoardEvents();
                 toggleBtns();
+            }
+
+            function runReset() {
+                audioPlayer.currentTime = 0
             }
 
             function stopRecorder() {
@@ -286,10 +308,10 @@
                             console.log(copyRecording[measure]);
                             console.log(smallestStepDuration);
 
-                            if (smallestStepDuration >= 4) {
+                            if (smallestStepDuration >= 3) {
                                 // quarter note measure
                                 processedSteps += `quarter,\n`;
-                            } else if (counter >= 2) {
+                            } else if (counter >= 1) {
                                 // eighth note measure
                                 processedSteps += `eighth,\n`;
                             } else {
@@ -306,6 +328,15 @@
                 console.log(processedSteps);
             }
 
+            // inspired by https://stackoverflow.com/questions/28619550/javascript-play-uploaded-audio
+            function processFile(event) {
+                audioPlayer.src = URL.createObjectURL(this.files[0]);
+                // not really needed in this exact case, but since it is really important in other cases,
+                // don't forget to revoke the blobURI when you don't need it
+                audioPlayer.onend = function(e) {
+                    URL.revokeObjectURL(this.src);
+                }
+            }
         </script>
     </body>
 </html>
