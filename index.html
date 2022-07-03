@@ -7,7 +7,7 @@
         <script src="./tailwindcss.min.js"></script>
     </head>
     <body class="bg-gray-600">
-        <div class="mx-96" id="main-div">
+        <div class="mx-48" id="main-div">
             <div id="header" class="flex justify-center h-32">
                 <h1 class="">Step Recorder</h1>
             </div>
@@ -21,7 +21,7 @@
                     <div class="flex-col">
                         <div class="flex justify-center">
                             <input id="dancepad" name="key_input_type" value="dancepad" type="checkbox" disabled>
-                            <label for="dancepad" class="ml-4">Dance Pad</label>
+                            <label for="dancepad" class="ml-4">Use Dance Pad</label>
                         </div>
                     </div>
                     <hr />
@@ -47,6 +47,9 @@
                     <div class="flex justify-center">
                         <button type="button" id="show_btn" class="bg-yellow-600 px-8 py-1 rounded-md">Show Recorded Steps</button>
                     </div>
+                </div>
+                <div id="canvas" class="flex">
+                    <canvas id="stepCanvas" width="240" height="680"></canvas>
                 </div>
             </div>
         </div>
@@ -185,7 +188,14 @@
             // options are 4, 8, 16
             const STANDARD_BEAT_NOTE = 16;
 
+            const canvas = getEl('stepCanvas');
+            const ctx = canvas.getContext('2d');
+
             // ================== Main methods
+            window.onload = function () {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            };
+
             function runStart() {
                 hideError();
                 
@@ -336,6 +346,10 @@
                 audioPlayer.onend = function(e) {
                     URL.revokeObjectURL(this.src);
                 }
+            }
+
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
             }
         </script>
     </body>
