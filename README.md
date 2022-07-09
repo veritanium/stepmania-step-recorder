@@ -7,6 +7,8 @@ This app aims to help by allowing the user to play a song and type in the steps 
 
 The app is written in vanilla Javascript and uses tailwind css with the idea of making a true single page application that can be statically hosted.
 
+This projects is starting as a very basic proof-of-concept and will be refactored as architectural components are solidified. The end goal is to have a single file application. It is for this reason more complex frameworks like Vue or React are not being utilized and the code is in one file and in modern vanilla JavaScript
+
 ## Development
 
 Start with 
