@@ -190,6 +190,11 @@
 
             const canvas = getEl('stepCanvas');
             const ctx = canvas.getContext('2d');
+            let drawing;
+            let beatLines = [];
+            let lineY = canvas.height;
+            let speed = 2;
+            let paused = true;
 
             // ================== Main methods
             window.onload = function () {
@@ -203,6 +208,7 @@
                     showError('Beats per minute must be set');
                     return;
                 }
+                paused = false;
                 toggleBtns();
                 
                 // get beats per min
@@ -217,6 +223,8 @@
                 // start recording
                 audioPlayer.play();
                 startRecorder(beatDurations);
+                draw();
+                // drawing = setInterval(draw, 1000)
             }
 
             function startRecorder({ quarter, eighth, sixteenth }) {
@@ -252,7 +260,9 @@
             }
 
             function runStop() {
+                paused = true;
                 stopRecorder();
+                // clearInterval(drawing);
                 audioPlayer.pause();
                 disableKeyBoardEvents();
                 toggleBtns();
@@ -348,8 +358,36 @@
                 }
             }
 
+            // from https://stackoverflow.com/questions/43676136/canvas-animate-line-to-move-up-and-down
             function draw() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                if (!paused) {     
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    
+                    // draw beat line
+                    // draw line
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(canvas.width, 0);
+                    ctx.stroke();
+
+                    // move line
+                    lineY -= speed;
+                    if (lineY < 0) {
+                        lineY = canvas.height;
+                    }
+
+                    // draw line
+                    ctx.beginPath();
+                    ctx.moveTo(0, lineY);
+                    ctx.lineTo(canvas.width, lineY);
+                    if (lineY === 0) {
+                        ctx.fillStyle = "white";
+                        ctx.fill()
+                    }
+                    ctx.stroke();
+
+                    animationFrame = requestAnimationFrame(draw);
+                }
             }
         </script>
     </body>
