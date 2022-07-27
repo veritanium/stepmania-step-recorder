@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "serve": "http-server -p 8080 -o"
+    "serve": "http-server ./src -p 8080 -o"
   },
   "devDependencies": {
     "http-server": "^14.1.0"

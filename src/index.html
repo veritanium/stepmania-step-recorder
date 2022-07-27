@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <script src="./tailwindcss.min.js"></script>
+    </head>
+    <body class="bg-gray-600">
+        <div class="mx-48" id="main-div">
+            <div id="header" class="flex justify-center h-32">
+                <h1 class="">Step Recorder</h1>
+            </div>
+            <div id="content" class="flex justify-center">
+                <div class="flex-col space-y-2">
+                    <div class="flex justify-center space-x-2">
+                        <label for="beats_per_min">BPM</label>
+                        <input id="beats_per_min" name="beats_per_min" type="number" value="120">
+                    </div>
+                    <hr />
+                    <div class="flex-col">
+                        <div class="flex justify-center">
+                            <input id="dancepad" name="key_input_type" value="dancepad" type="checkbox" disabled>
+                            <label for="dancepad" class="ml-4">Use Dance Pad</label>
+                        </div>
+                    </div>
+                    <hr />
+                    <div class="flex justify-center">
+                        <div class="flex-col space-y-4">
+                            <div class="flex">
+                                <input type="file" id="audio_file" />
+                            </div>
+                            <div class="flex justify-center">
+                                <audio id="audio_player" controls></audio>
+                            </div>
+                        </div>
+                    </div>
+                    <hr />
+                    <div class="flex justify-around">
+                        <button type="button" id="start_btn" class="bg-green-600 px-8 py-1 rounded-md">Start</button>
+                        <button type="button" id="stop_btn" class="bg-red-600 px-8 py-1 rounded-md hidden">Stop</button>
+                        <button type="button" id="reset_btn" class="bg-yellow-600 px-8 py-1 rounded-md">Reset</button>
+                    </div>
+                    <div class="flex justify-center">
+                        <span id="start_message" class="bg-red-400 p-2 rounded-md hidden"></span>
+                    </div>
+                    <div class="flex justify-center">
+                        <button type="button" id="show_btn" class="bg-yellow-600 px-8 py-1 rounded-md">Show Recorded Steps</button>
+                    </div>
+                </div>
+                <div id="canvas" class="flex">
+                    <canvas id="stepCanvas" width="240" height="680"></canvas>
+                </div>
+            </div>
+        </div>
+        <script src="./script.js"></script>
+    </body>
+</html>
