@@ -140,28 +140,7 @@ const FRAMES_PER_SECOND = 30;
 const canvas = getEl('stepCanvas');
 const ctx = canvas.getContext('2d');
 let drawing;
-let beatLines = [
-    {},
-    {},
-    {},
-    {},
-    {},
-    {},
-    {},
-    {},
-    {},
-    {},
-    {},
-    {},
-    {},
-    {},
-    {},
-    {},
-    {},
-    {},
-    {},
-    {},
-];
+let beatLines = [];
 let lineY = canvas.height;
 let paused = true;
 
@@ -226,8 +205,12 @@ function handleStepInterval() {
     } else {
         // set a zero measure
         stepRecording[currentRecordingMeasure].push('0000');
-    }
 
+        // update beat lines
+        if (currentRecordingBeat % (4 + 1) === 0) {
+            beatLines.push({});
+        }
+    }
 }
 
 function runStop() {
@@ -241,7 +224,7 @@ function runStop() {
 
 function runReset() {
     audioPlayer.currentTime = 0
-    beatLines = [{},{},{},{},{},{},{},{},{},{},{},{},];
+    beatLines = [];
 }
 
 function stopRecorder() {
@@ -346,35 +329,30 @@ function draw() {
         let speed = getBeatsPerMin() * PX_PER_BEAT / 60 / lines;
 
         // draw lines in array
-        let spacer = 0;
         let measure = 0;
-        beatLines.forEach(line => {
+        beatLines.forEach((line, index) => {
             // update line position
             if (line.position === undefined) {
-                line.position = canvas.height;
+                beatLines[index].position = canvas.height + index * PX_PER_BEAT;
+                beatLines[index].width = measure === 0 || measure % 4 === 0 ? 2 : 1;
             } else if (line.position < 0) {
-                delete line;
+                // beatLines.shift();
             } else {
-                line.position -= speed;
+                beatLines[index].position = line.position - speed;
             }
     
             // draw line
             ctx.beginPath();
-            ctx.moveTo(0, line.position - spacer);
-            ctx.lineTo(canvas.width, line.position - spacer);
-            if (measure === 0 || measure % 4 === 0) {
-                ctx.lineWidth = 2;
-            } else {
-                ctx.lineWidth = 1;
-            }
+            ctx.moveTo(0, beatLines[index].position);
+            ctx.lineTo(canvas.width, beatLines[index].position);
+            ctx.lineWidth = beatLines[index].width ?? 1;
+
             if (lineY === 0) {
                 ctx.fillStyle = "white";
                 ctx.fill()
             }
             ctx.stroke();
             
-            
-            spacer += PX_PER_BEAT;
             measure++;
         });
     }
