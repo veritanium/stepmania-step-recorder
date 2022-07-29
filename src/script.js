@@ -55,6 +55,16 @@ function toggleBtns() {
     }
 }
 
+function toggleTempoInput() {
+    let tempoEl = getEl('beats_per_min');
+
+    if (tempoEl.disabled) {
+        tempoEl.disabled = false;
+    } else {
+        tempoEl.disabled = true;
+    }
+}
+
 function getBeatSeconds() {
     let bpm = getBeatsPerMin();
 
@@ -134,7 +144,7 @@ let stepRecording = {
 
 // options are 4, 8, 16
 const STANDARD_BEAT_NOTE = 16;
-const PX_PER_BEAT = 24;
+const PX_PER_BEAT = 40;
 const FRAMES_PER_SECOND = 30;
 
 const canvas = getEl('stepCanvas');
@@ -160,6 +170,7 @@ function runStart() {
     }
     paused = false;
     toggleBtns();
+    toggleTempoInput();
     
     // get beats per min
     beatDurations = getBeatSeconds();
@@ -193,23 +204,40 @@ function handleStepInterval() {
     let currentKeys = [...currentKeysPressed.values()];
 
     // check if any keys are currently pressed
+    let step = '0000';
     if (currentKeys.length) {
         if (currentKeys.length === 1) {
-            stepRecording[currentRecordingMeasure].push(convertKeyToStep(currentKeys[0]));
+            step = convertKeyToStep(currentKeys[0]);
+            stepRecording[currentRecordingMeasure].push(step);
         } else if (currentKeys.length === 2) {
-            stepRecording[currentRecordingMeasure].push(mergeSteps(convertKeyToStep(currentKeys[0]), convertKeyToStep(currentKeys[1])));
+            step = mergeSteps(convertKeyToStep(currentKeys[0]), convertKeyToStep(currentKeys[1]));
+            stepRecording[currentRecordingMeasure].push(step);
         } else {
             // assume invalid for now if more than 2 keystrokes in a single step
-            stepRecording[currentRecordingMeasure].push('0000');    
+            stepRecording[currentRecordingMeasure].push(step);  
         }
     } else {
         // set a zero measure
-        stepRecording[currentRecordingMeasure].push('0000');
+        stepRecording[currentRecordingMeasure].push(step);
 
-        // update beat lines
-        if (currentRecordingBeat % (4 + 1) === 0) {
-            beatLines.push({});
-        }
+    }
+    
+    // update beat lines
+    if (currentRecordingBeat % 4 === 0) {
+        beatLines.push({
+            note: 'quarter',
+            step,
+        });
+    } else if (step !== '0000' && currentRecordingBeat % 2 === 0) {
+        beatLines.push({
+            note: 'eighth',
+            step,
+        });
+    } else if (step !== '0000') {
+        beatLines.push({
+            note: 'sixteenth',
+            step,
+        });
     }
 }
 
@@ -220,11 +248,13 @@ function runStop() {
     audioPlayer.pause();
     disableKeyBoardEvents();
     toggleBtns();
+    toggleTempoInput();
 }
 
 function runReset() {
     audioPlayer.currentTime = 0
     beatLines = [];
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 }
 
 function stopRecorder() {
@@ -325,33 +355,48 @@ function draw() {
         ctx.lineTo(canvas.width, 0);
         ctx.stroke();
 
-        let lines = Math.floor(canvas.height / PX_PER_BEAT);
-        let speed = getBeatsPerMin() * PX_PER_BEAT / 60 / lines;
+        // get pixels movement per frame based on beats per minutes
+        let pxPerFrame = getBeatsPerMin() / 60 * PX_PER_BEAT / FRAMES_PER_SECOND;
 
         // draw lines in array
         let measure = 0;
         beatLines.forEach((line, index) => {
             // update line position
             if (line.position === undefined) {
-                beatLines[index].position = canvas.height + index * PX_PER_BEAT;
+                let pixelGap = PX_PER_BEAT;
+                if (line.note === 'eighth') {
+                    pixelGap = pixelGap / 2;
+                } else if (line.note === 'sixteenth') {
+                    pixelGap = pixelGap / 4;
+                }
+                beatLines[index].position = canvas.height + pixelGap;
                 beatLines[index].width = measure === 0 || measure % 4 === 0 ? 2 : 1;
-            } else if (line.position < 0) {
-                // beatLines.shift();
+            } else if (line.position <= 0) {
+                beatLines[index].position = 0;
             } else {
-                beatLines[index].position = line.position - speed;
+                beatLines[index].position = line.position - pxPerFrame;
             }
     
-            // draw line
-            ctx.beginPath();
-            ctx.moveTo(0, beatLines[index].position);
-            ctx.lineTo(canvas.width, beatLines[index].position);
-            ctx.lineWidth = beatLines[index].width ?? 1;
-
-            if (lineY === 0) {
-                ctx.fillStyle = "white";
-                ctx.fill()
+            // draw line if quarter
+            if (line.note === 'quarter') {  
+                ctx.beginPath();
+                ctx.moveTo(0, beatLines[index].position);
+                ctx.lineTo(canvas.width, beatLines[index].position);
+                ctx.lineWidth = beatLines[index].width ?? 1;
+                
+                if (lineY === 0) {
+                    ctx.fillStyle = 'white';
+                    ctx.fill()
+                }
+                ctx.stroke();
             }
-            ctx.stroke();
+
+            // TODO Draw step mania arrows instead of step numbers
+            if (line.step !== '0000') {
+                ctx.font = '10px Arial';
+                ctx.fillStyle = 'black';
+                ctx.fillText(line.step, 0, beatLines[index].position);
+            }
             
             measure++;
         });
