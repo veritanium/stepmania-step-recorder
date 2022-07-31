@@ -88,6 +88,19 @@ function convertKeyToStep(key) {
     return SM_KEY_NOTES[key];
 }
 
+// direction must be lift, up, down, or right
+// type must be quarter, eighth, or sixteenth
+function getArrow(direction = 'left', type = 'quarter') {
+
+    return {
+        img: getEl('arrows_sprite'),
+        sx: ARROWS_SPRITE[direction],
+        sy: ARROWS_SPRITE[type],
+        swidth: SPRITE_PX,
+        sheight: SPRITE_PX,
+    }
+}
+
 // END ==================== Helper methods ====================
 
 // ==================== Game pad handling ====================
@@ -132,6 +145,19 @@ const SM_KEY_NOTES = {
     d: '0100', 
 }
 
+const SPRITE_PX = 96;
+
+const ARROWS_SPRITE = {
+    quarter: 0,
+    eighth: SPRITE_PX,
+    sixteenth: SPRITE_PX * 2,
+    left: 0,
+    up: SPRITE_PX,
+    down: SPRITE_PX * 2,
+    right: SPRITE_PX * 3,
+
+};
+
 let currentKeysPressed = new Set();
 
 let currentRecordingMeasure = 1;
@@ -144,14 +170,13 @@ let stepRecording = {
 
 // options are 4, 8, 16
 const STANDARD_BEAT_NOTE = 16;
-const PX_PER_BEAT = 40;
+const PX_PER_BEAT = 60;
 const FRAMES_PER_SECOND = 30;
 
 const canvas = getEl('stepCanvas');
 const ctx = canvas.getContext('2d');
 let drawing;
 let beatLines = [];
-let lineY = canvas.height;
 let paused = true;
 
 // END ==================== Init vars ====================
@@ -383,19 +408,50 @@ function draw() {
                 ctx.moveTo(0, beatLines[index].position);
                 ctx.lineTo(canvas.width, beatLines[index].position);
                 ctx.lineWidth = beatLines[index].width ?? 1;
-                
-                if (lineY === 0) {
-                    ctx.fillStyle = 'white';
-                    ctx.fill()
-                }
                 ctx.stroke();
             }
 
             // TODO Draw step mania arrows instead of step numbers
-            if (line.step !== '0000') {
-                ctx.font = '10px Arial';
-                ctx.fillStyle = 'black';
-                ctx.fillText(line.step, 0, beatLines[index].position);
+            let arrowSize = canvas.width / 4;
+            let arrowImg;
+            let arrowPos;
+            switch (line.step) {
+                case '0000':
+                    break;
+                case '1000':
+                    arrowImg = getArrow('left', line.note);
+                    arrowPos = 0;
+                    break;
+                case '0100':
+                    arrowImg = getArrow('up', line.note);
+                    arrowPos = arrowSize;
+                    break;
+                case '0010':
+                    arrowImg = getArrow('down', line.note);
+                    arrowPos = arrowSize * 2;
+                    break;
+                case '0001':
+                    arrowImg = getArrow('right', line.note);
+                    arrowPos = arrowSize * 3;
+                    break;
+                default:
+                    ctx.font = '10px Arial';
+                    ctx.fillStyle = 'black';
+                    ctx.fillText(line.step, 0, beatLines[index].position);
+                    break;
+            }
+
+            if (arrowImg) {
+                ctx.drawImage(
+                    arrowImg.img,
+                    arrowImg.sx,
+                    arrowImg.sy,
+                    arrowImg.swidth,
+                    arrowImg.sheight,
+                    arrowPos, 
+                    beatLines[index].position, 
+                    arrowSize, arrowSize
+                );
             }
             
             measure++;
